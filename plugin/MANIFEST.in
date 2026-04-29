@@ -1,0 +1,3 @@
+include README.md
+recursive-include octoprint_marketplace_link/templates *.jinja2
+recursive-include octoprint_marketplace_link/static *

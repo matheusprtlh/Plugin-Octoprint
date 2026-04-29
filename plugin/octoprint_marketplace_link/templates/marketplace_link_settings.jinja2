@@ -1,0 +1,87 @@
+<form class="form-horizontal">
+    <h4>{{ _('Webhook') }}</h4>
+
+    <div class="control-group">
+        <label class="control-label">{{ _('URL') }}</label>
+        <div class="controls">
+            <input type="url" class="input-block-level"
+                   placeholder="https://meusite.com/api/octoprint"
+                   data-bind="value: settingsViewModel.settings.plugins.marketplace_link.webhook_url">
+            <span class="help-block">
+                {{ _('URL completa que receberá os POSTs JSON com o estado da impressora.') }}
+            </span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">{{ _('Token (Bearer)') }}</label>
+        <div class="controls">
+            <input type="password" class="input-block-level"
+                   placeholder="opcional"
+                   data-bind="value: settingsViewModel.settings.plugins.marketplace_link.auth_token">
+            <span class="help-block">
+                {{ _('Se preenchido, será enviado no header Authorization: Bearer.') }}
+            </span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">{{ _('Marca') }}</label>
+        <div class="controls">
+            <select data-bind="value: settingsViewModel.settings.plugins.marketplace_link.brand">
+                <option value="creality">Creality</option>
+                <option value="elegoo">Elegoo</option>
+                <option value="prusa">Prusa</option>
+                <option value="bambu">Bambu Lab</option>
+                <option value="other">{{ _('Outra') }}</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">{{ _('Modelo') }}</label>
+        <div class="controls">
+            <input type="text" placeholder="Ex.: Ender 3 V2"
+                   data-bind="value: settingsViewModel.settings.plugins.marketplace_link.model">
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">{{ _('Heartbeat (min)') }}</label>
+        <div class="controls">
+            <input type="number" min="0" max="60" style="width: 6em;"
+                   data-bind="value: settingsViewModel.settings.plugins.marketplace_link.heartbeat_minutes">
+            <span class="help-block">
+                {{ _('Posta um evento "heartbeat" a cada N minutos para o site saber que a impressora ainda está viva. 0 desativa.') }}
+            </span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <div class="controls">
+            <button type="button" class="btn" data-bind="click: testWebhook">
+                {{ _('Testar webhook') }}
+            </button>
+            <span data-bind="text: testResult"></span>
+        </div>
+    </div>
+
+    <hr>
+    <h4>{{ _('Última entrega') }}</h4>
+
+    <div class="control-group">
+        <label class="control-label">{{ _('Status') }}</label>
+        <div class="controls">
+            <span class="label" data-bind="text: deliveryLabel, css: deliveryClass"></span>
+            <span class="muted" data-bind="visible: lastDeliveryAgo, text: lastDeliveryAgo"
+                  style="margin-left: 0.5em;"></span>
+        </div>
+    </div>
+
+    <div class="control-group" data-bind="visible: settingsViewModel.settings.plugins.marketplace_link.last_delivery_error">
+        <label class="control-label">{{ _('Último erro') }}</label>
+        <div class="controls">
+            <code data-bind="text: settingsViewModel.settings.plugins.marketplace_link.last_delivery_error"></code>
+        </div>
+    </div>
+</form>

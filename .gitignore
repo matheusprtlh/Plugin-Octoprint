@@ -1,0 +1,43 @@
+# Áudios e transcrição do cliente — privados, não publicar
+*.ogg
+Contexto*.md
+
+# Configs locais do Claude Code
+.claude/
+
+# Venvs locais (devem ser recriados em cada máquina)
+test_env/
+test_env_311/
+test_env_312/
+test_env_39/
+
+# Dados gerados pelo OctoPrint dev local
+octoprint_data/
+
+# Build artifacts (regerados via python -m build)
+plugin/dist/
+plugin/build/
+plugin/*.egg-info/
+plugin/octoprint_marketplace_link.egg-info/
+
+# Logs e estado do harness
+test_e2e/received.log
+test_e2e/octoprint/__pycache__/
+
+# Python padrão
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# IDE / sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Variáveis de ambiente
+.env
+.env.local

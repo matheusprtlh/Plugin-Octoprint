@@ -1,0 +1,37 @@
+#settings_plugin_marketplace_link .label {
+    margin-right: 0.5em;
+}
+
+#settings_plugin_marketplace_link code {
+    user-select: all;
+}
+
+#settings_plugin_marketplace_link .muted {
+    color: #888;
+    font-size: 0.9em;
+}
+
+/* Navbar widget */
+.marketplace-link-navbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0 0.6em;
+    text-decoration: none;
+}
+
+.marketplace-link-navbar i.fa {
+    font-size: 1.1em;
+}
+
+.marketplace-link-navbar.marketplace-connected i.fa {
+    color: #5cb85c;
+}
+
+.marketplace-link-navbar.marketplace-disconnected i.fa {
+    color: #f0ad4e;
+}
+
+.marketplace-link-navbar.marketplace-unpaired i.fa {
+    color: #999;
+}

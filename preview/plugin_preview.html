@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Marketplace Link — preview (webhook)</title>
+
+<!-- Mesmo stack do OctoPrint: Bootstrap 2 + Font Awesome 6 + Knockout. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/2.3.2/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.5.1/knockout-latest.min.js"></script>
+
+<style>
+/* CSS real do plugin (cópia de plugin/.../static/css/marketplace_link.css). */
+#settings_plugin_marketplace_link .label {
+    margin-right: 0.5em;
+}
+#settings_plugin_marketplace_link code {
+    user-select: all;
+}
+#settings_plugin_marketplace_link .muted {
+    color: #888;
+    font-size: 0.9em;
+}
+.marketplace-link-navbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0 0.6em;
+    text-decoration: none;
+}
+.marketplace-link-navbar i.fa {
+    font-size: 1.1em;
+}
+.marketplace-link-navbar.marketplace-connected i.fa {
+    color: #5cb85c;
+}
+.marketplace-link-navbar.marketplace-disconnected i.fa {
+    color: #f0ad4e;
+}
+.marketplace-link-navbar.marketplace-unpaired i.fa {
+    color: #999;
+}
+
+/* Cromos do preview (não fazem parte do plugin). */
+body { background: #f5f5f5; }
+.preview-controls {
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+    padding: 0.6em 1em;
+    font-size: 0.9em;
+}
+.preview-controls label { margin-right: 1em; }
+.preview-navbar {
+    background: #2e3239;
+    color: #ddd;
+    padding: 0.5em 1.2em;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+}
+.preview-navbar .brand { font-weight: bold; margin-right: auto; color: #fff; }
+.preview-navbar .marketplace-link-navbar { color: #ddd; }
+.preview-navbar .marketplace-link-navbar:hover { color: #fff; }
+.preview-pane {
+    background: #fff;
+    margin: 1em auto;
+    max-width: 900px;
+    padding: 1.2em 2em;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+.preview-pane h3 {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 0.4em;
+}
+.preview-note {
+    font-size: 0.85em;
+    color: #666;
+    margin: 0.2em 0 1em;
+}
+</style>
+</head>
+<body>
+
+<div class="preview-controls">
+    <strong>Preview:</strong>
+    <label><input type="radio" name="state" value="unconfigured"> Não configurado</label>
+    <label><input type="radio" name="state" value="idle"> Configurado, sem envios</label>
+    <label><input type="radio" name="state" value="success" checked> Última entrega OK (HTTP 200)</label>
+    <label><input type="radio" name="state" value="http_error"> Última entrega falhou (HTTP 500)</label>
+    <label><input type="radio" name="state" value="net_error"> Última entrega falhou (rede)</label>
+</div>
+
+<div class="preview-navbar">
+    <span class="brand">OctoPrint <span style="opacity:0.4; font-weight:normal;">(mock)</span></span>
+    <span id="navbar_plugin_marketplace_link"></span>
+</div>
+
+<div class="preview-pane">
+    <h3>Settings → Marketplace Link</h3>
+    <div class="preview-note">
+        Réplica fiel do template <code>marketplace_link_settings.jinja2</code> (sem as
+        marcações <code>{{ _('...') }}</code>). Os bindings Knockout são os mesmos que rodam
+        dentro do OctoPrint.
+    </div>
+    <div id="settings_plugin_marketplace_link"></div>
+</div>
+
+<script>
+window.OCTOPRINT_VIEWMODELS = [];
+
+window._mockState = {
+    webhook_url: "https://meusite.com/api/octoprint",
+    auth_token: "ghp_xxxxxxx",
+    brand: "creality",
+    model: "Ender 3 V2",
+    heartbeat_minutes: 5,
+    last_delivery_at: new Date(Date.now() - 8000).toISOString(),
+    last_delivery_status: 200,
+    last_delivery_error: ""
+};
+
+window.OctoPrint = {
+    simpleApiCommand: function (plugin, command, payload) {
+        console.log("[mock] simpleApiCommand", plugin, command, payload);
+        var ml = window._mockState;
+        // Reflete o estado atual do mock no resultado do "Testar webhook".
+        if (ml.last_delivery_status >= 200 && ml.last_delivery_status < 300) {
+            return $.Deferred().resolve({ ok: true, status: 200, error: "" }).promise();
+        }
+        if (ml.last_delivery_status === 0) {
+            return $.Deferred().resolve({ ok: false, status: 0, error: "connection refused" }).promise();
+        }
+        return $.Deferred().resolve({
+            ok: false,
+            status: ml.last_delivery_status,
+            error: ml.last_delivery_error
+        }).promise();
+    },
+    simpleApiGet: function () {
+        var ml = window._mockState;
+        return $.Deferred().resolve({
+            configured: !!ml.webhook_url,
+            last_delivery_at: ml.last_delivery_at,
+            last_delivery_status: ml.last_delivery_status,
+            last_delivery_error: ml.last_delivery_error
+        }).promise();
+    }
+};
+
+function makeSettingsVM() {
+    var ml = window._mockState;
+    return {
+        settings: {
+            plugins: {
+                marketplace_link: {
+                    webhook_url: ko.observable(ml.webhook_url),
+                    auth_token: ko.observable(ml.auth_token),
+                    brand: ko.observable(ml.brand),
+                    model: ko.observable(ml.model),
+                    heartbeat_minutes: ko.observable(ml.heartbeat_minutes),
+                    last_delivery_at: ko.observable(ml.last_delivery_at),
+                    last_delivery_status: ko.observable(ml.last_delivery_status),
+                    last_delivery_error: ko.observable(ml.last_delivery_error)
+                }
+            }
+        },
+        requestData: function () { /* no-op no preview */ },
+        show: function (anchor) { alert("(mock) abriria a settings dialog em: " + anchor); }
+    };
+}
+
+// ============================================================
+// Viewmodel real do plugin (cópia de marketplace_link.js, com o wrapper
+// $(function(){...}) desfeito).
+// ============================================================
+function MarketplaceLinkViewModel(parameters) {
+    var self = this;
+    self.settingsViewModel = parameters[0];
+
+    self.testResult = ko.observable("");
+
+    self.isConfigured = ko.pureComputed(function () {
+        var s = self.settingsViewModel.settings;
+        if (!s || !s.plugins || !s.plugins.marketplace_link) return false;
+        return ((s.plugins.marketplace_link.webhook_url() || "").trim()) !== "";
+    });
+
+    self.lastDeliveryStatus = ko.pureComputed(function () {
+        var s = self.settingsViewModel.settings;
+        if (!s || !s.plugins || !s.plugins.marketplace_link) return 0;
+        return parseInt(s.plugins.marketplace_link.last_delivery_status() || 0, 10);
+    });
+
+    self.lastDeliveryAt = ko.pureComputed(function () {
+        var s = self.settingsViewModel.settings;
+        if (!s || !s.plugins || !s.plugins.marketplace_link) return "";
+        return s.plugins.marketplace_link.last_delivery_at() || "";
+    });
+
+    self.deliveryOk = ko.pureComputed(function () {
+        var code = self.lastDeliveryStatus();
+        return code >= 200 && code < 300;
+    });
+
+    self.deliveryLabel = ko.pureComputed(function () {
+        if (!self.isConfigured()) return "Não configurado";
+        if (!self.lastDeliveryAt()) return "Nenhum envio ainda";
+        var code = self.lastDeliveryStatus();
+        if (code === 0) return "Falhou (rede)";
+        return "HTTP " + code;
+    });
+
+    self.deliveryClass = ko.pureComputed(function () {
+        if (!self.isConfigured()) return "";
+        if (!self.lastDeliveryAt()) return "";
+        return self.deliveryOk() ? "label-success" : "label-important";
+    });
+
+    self.lastDeliveryAgo = ko.pureComputed(function () {
+        var iso = self.lastDeliveryAt();
+        if (!iso) return "";
+        var when = new Date(iso);
+        if (isNaN(when.getTime())) return "";
+        var seconds = Math.max(0, Math.floor((Date.now() - when.getTime()) / 1000));
+        if (seconds < 60) return "há " + seconds + "s";
+        var minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return "há " + minutes + "min";
+        var hours = Math.floor(minutes / 60);
+        return "há " + hours + "h";
+    });
+
+    self.navbarLabel = ko.pureComputed(function () {
+        if (!self.isConfigured()) return "Webhook";
+        if (!self.lastDeliveryAt()) return "Webhook (idle)";
+        return self.deliveryOk() ? "Webhook OK" : "Webhook erro";
+    });
+
+    self.navbarTooltip = ko.pureComputed(function () {
+        if (!self.isConfigured()) {
+            return "Webhook: não configurado. Abra Settings → Marketplace Link.";
+        }
+        if (!self.lastDeliveryAt()) {
+            return "Webhook: configurado, sem envios ainda.";
+        }
+        var ago = self.lastDeliveryAgo();
+        if (self.deliveryOk()) {
+            return "Webhook: última entrega " + ago + " (HTTP " + self.lastDeliveryStatus() + ")";
+        }
+        var err = self.settingsViewModel.settings.plugins.marketplace_link.last_delivery_error() || "?";
+        return "Webhook: falhou " + ago + " — " + err;
+    });
+
+    self.navbarIconClass = ko.pureComputed(function () {
+        if (!self.isConfigured()) return "fa-link-slash";
+        if (!self.lastDeliveryAt()) return "fa-cloud";
+        return self.deliveryOk() ? "fa-cloud" : "fa-triangle-exclamation";
+    });
+
+    self.navbarStateClass = ko.pureComputed(function () {
+        if (!self.isConfigured()) return "marketplace-unpaired";
+        if (!self.lastDeliveryAt()) return "marketplace-connected";
+        return self.deliveryOk() ? "marketplace-connected" : "marketplace-disconnected";
+    });
+
+    self.openSettings = function () {
+        if (typeof self.settingsViewModel.show === "function") {
+            self.settingsViewModel.show("settings_plugin_marketplace_link");
+        }
+    };
+
+    self.testWebhook = function () {
+        self.testResult("...");
+        OctoPrint.simpleApiCommand("marketplace_link", "test_webhook", {})
+            .done(function (resp) {
+                if (resp.ok) {
+                    self.testResult("OK (HTTP " + resp.status + ")");
+                } else if (resp.status) {
+                    self.testResult("Falhou (HTTP " + resp.status + "): " + (resp.error || ""));
+                } else {
+                    self.testResult("Falhou: " + (resp.error || "?"));
+                }
+            });
+    };
+}
+
+// ============================================================
+// Bootstrap
+// ============================================================
+$(function () {
+    var navbarTpl =
+        '<a href="javascript:void(0)" class="marketplace-link-navbar" ' +
+        'data-bind="click: openSettings, attr: {title: navbarTooltip}, css: navbarStateClass">' +
+        '<i class="fa" data-bind="css: navbarIconClass"></i>' +
+        '<span class="hidden-tablet" data-bind="text: navbarLabel"></span>' +
+        '</a>';
+
+    var settingsTpl = `
+<form class="form-horizontal">
+    <h4>Webhook</h4>
+
+    <div class="control-group">
+        <label class="control-label">URL</label>
+        <div class="controls">
+            <input type="url" class="input-block-level"
+                   placeholder="https://meusite.com/api/octoprint"
+                   data-bind="value: settingsViewModel.settings.plugins.marketplace_link.webhook_url">
+            <span class="help-block">URL completa que receberá os POSTs JSON com o estado da impressora.</span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">Token (Bearer)</label>
+        <div class="controls">
+            <input type="password" class="input-block-level" placeholder="opcional"
+                   data-bind="value: settingsViewModel.settings.plugins.marketplace_link.auth_token">
+            <span class="help-block">Se preenchido, será enviado no header Authorization: Bearer.</span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">Marca</label>
+        <div class="controls">
+            <select data-bind="value: settingsViewModel.settings.plugins.marketplace_link.brand">
+                <option value="creality">Creality</option>
+                <option value="elegoo">Elegoo</option>
+                <option value="prusa">Prusa</option>
+                <option value="bambu">Bambu Lab</option>
+                <option value="other">Outra</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">Modelo</label>
+        <div class="controls">
+            <input type="text" placeholder="Ex.: Ender 3 V2"
+                   data-bind="value: settingsViewModel.settings.plugins.marketplace_link.model">
+        </div>
+    </div>
+
+    <div class="control-group">
+        <label class="control-label">Heartbeat (min)</label>
+        <div class="controls">
+            <input type="number" min="0" max="60" style="width: 6em;"
+                   data-bind="value: settingsViewModel.settings.plugins.marketplace_link.heartbeat_minutes">
+            <span class="help-block">Posta um evento "heartbeat" a cada N minutos para o site saber que a impressora ainda está viva. 0 desativa.</span>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <div class="controls">
+            <button type="button" class="btn" data-bind="click: testWebhook">Testar webhook</button>
+            <span data-bind="text: testResult"></span>
+        </div>
+    </div>
+
+    <hr>
+    <h4>Última entrega</h4>
+
+    <div class="control-group">
+        <label class="control-label">Status</label>
+        <div class="controls">
+            <span class="label" data-bind="text: deliveryLabel, css: deliveryClass"></span>
+            <span class="muted" data-bind="visible: lastDeliveryAgo, text: lastDeliveryAgo"
+                  style="margin-left: 0.5em;"></span>
+        </div>
+    </div>
+
+    <div class="control-group" data-bind="visible: settingsViewModel.settings.plugins.marketplace_link.last_delivery_error">
+        <label class="control-label">Último erro</label>
+        <div class="controls">
+            <code data-bind="text: settingsViewModel.settings.plugins.marketplace_link.last_delivery_error"></code>
+        </div>
+    </div>
+</form>`;
+
+    $("#navbar_plugin_marketplace_link").html(navbarTpl);
+    $("#settings_plugin_marketplace_link").html(settingsTpl);
+
+    var settingsVM = makeSettingsVM();
+    var vm = new MarketplaceLinkViewModel([settingsVM]);
+
+    ko.applyBindings(vm, document.getElementById("navbar_plugin_marketplace_link"));
+    ko.applyBindings(vm, document.getElementById("settings_plugin_marketplace_link"));
+
+    function applyState(name) {
+        var ml = window._mockState;
+        var p = settingsVM.settings.plugins.marketplace_link;
+        switch (name) {
+            case "unconfigured":
+                ml.webhook_url = "";
+                ml.last_delivery_at = "";
+                ml.last_delivery_status = 0;
+                ml.last_delivery_error = "";
+                p.webhook_url("");
+                p.last_delivery_at("");
+                p.last_delivery_status(0);
+                p.last_delivery_error("");
+                break;
+            case "idle":
+                ml.webhook_url = "https://meusite.com/api/octoprint";
+                ml.last_delivery_at = "";
+                ml.last_delivery_status = 0;
+                ml.last_delivery_error = "";
+                p.webhook_url("https://meusite.com/api/octoprint");
+                p.last_delivery_at("");
+                p.last_delivery_status(0);
+                p.last_delivery_error("");
+                break;
+            case "success":
+                ml.webhook_url = "https://meusite.com/api/octoprint";
+                ml.last_delivery_at = new Date(Date.now() - 8000).toISOString();
+                ml.last_delivery_status = 200;
+                ml.last_delivery_error = "";
+                p.webhook_url("https://meusite.com/api/octoprint");
+                p.last_delivery_at(ml.last_delivery_at);
+                p.last_delivery_status(200);
+                p.last_delivery_error("");
+                break;
+            case "http_error":
+                ml.webhook_url = "https://meusite.com/api/octoprint";
+                ml.last_delivery_at = new Date(Date.now() - 12000).toISOString();
+                ml.last_delivery_status = 500;
+                ml.last_delivery_error = "Internal Server Error";
+                p.webhook_url("https://meusite.com/api/octoprint");
+                p.last_delivery_at(ml.last_delivery_at);
+                p.last_delivery_status(500);
+                p.last_delivery_error("Internal Server Error");
+                break;
+            case "net_error":
+                ml.webhook_url = "https://meusite.com/api/octoprint";
+                ml.last_delivery_at = new Date(Date.now() - 35000).toISOString();
+                ml.last_delivery_status = 0;
+                ml.last_delivery_error = "ConnectionError: connection refused";
+                p.webhook_url("https://meusite.com/api/octoprint");
+                p.last_delivery_at(ml.last_delivery_at);
+                p.last_delivery_status(0);
+                p.last_delivery_error("ConnectionError: connection refused");
+                break;
+        }
+    }
+
+    $("input[name=state]").on("change", function () { applyState($(this).val()); });
+});
+</script>
+</body>
+</html>
