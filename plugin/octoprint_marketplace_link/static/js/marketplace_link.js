@@ -6,6 +6,21 @@ $(function () {
         self.settingsViewModel = parameters[0];
 
         self.testResult = ko.observable("");
+        self.bambuTestResult = ko.observable("");
+
+        // ---- Bambu live status (refreshed by the API poll) ----
+        self.bambuEnabledServer = ko.observable(false);
+        self.bambuStatusServer = ko.observable("offline");
+        self.bambuFirmware = ko.observable("");
+        self.bambuLastError = ko.observable("");
+
+        self.bambuStatusLabel = ko.pureComputed(function () {
+            var s = self.bambuStatusServer();
+            if (s === "printing") return "Imprimindo";
+            if (s === "idle") return "Ociosa (idle)";
+            if (s === "error") return "Erro";
+            return "Offline / desconectada";
+        });
 
         // ---- derived ----
         self.isConfigured = ko.pureComputed(function () {
@@ -116,11 +131,36 @@ $(function () {
                 });
         };
 
+        self.testBambu = function () {
+            self.bambuTestResult("conectando...");
+            OctoPrint.simpleApiCommand("marketplace_link", "test_bambu", {})
+                .done(function (resp) {
+                    if (resp.ok) {
+                        self.bambuTestResult("OK — broker MQTT respondeu, credenciais aceitas.");
+                    } else {
+                        self.bambuTestResult("Falhou: " + (resp.error || "?"));
+                    }
+                })
+                .fail(function (xhr) {
+                    self.bambuTestResult("Falhou: " + xhr.statusText);
+                });
+        };
+
         // ---- live status poll (refreshes settings observables from the server) ----
         self._pollHandle = null;
 
         self.refreshStatus = function () {
-            return self.settingsViewModel.requestData();
+            // Settings observables come from settingsViewModel.requestData().
+            // Bambu live state (status / firmware / last error) lives in our
+            // own SimpleApi GET endpoint — both must be polled.
+            self.settingsViewModel.requestData();
+            OctoPrint.simpleApiGet("marketplace_link").done(function (resp) {
+                if (!resp) return;
+                self.bambuEnabledServer(!!resp.bambu_enabled);
+                self.bambuStatusServer(resp.bambu_status || "offline");
+                self.bambuFirmware(resp.bambu_firmware || "");
+                self.bambuLastError(resp.bambu_last_error || "");
+            });
         };
 
         self.onStartupComplete = function () {

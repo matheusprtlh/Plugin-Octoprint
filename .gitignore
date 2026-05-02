@@ -19,6 +19,7 @@ plugin/dist/
 plugin/build/
 plugin/*.egg-info/
 plugin/octoprint_marketplace_link.egg-info/
+plugin.zip
 
 # Logs e estado do harness
 test_e2e/received.log

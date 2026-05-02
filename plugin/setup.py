@@ -6,9 +6,10 @@ from setuptools import setup
 plugin_identifier = "marketplace_link"
 plugin_package = "octoprint_marketplace_link"
 plugin_name = "OctoPrint-MarketplaceLink"
-plugin_version = "0.3.0"
+plugin_version = "0.4.0"
 plugin_description = (
-    "Posta status da impressora num webhook configurável a cada evento."
+    "Posta status da impressora num webhook configurável a cada evento. "
+    "Suporta impressoras serial (Marlin/Klipper/RepRap) e Bambu Lab via MQTT."
 )
 
 _readme = Path(__file__).parent / "README.md"
@@ -33,7 +34,12 @@ setup(
     },
     include_package_data=True,
     zip_safe=False,
-    install_requires=["requests>=2.28"],
+    install_requires=[
+        "requests>=2.28",
+        # Bambu Lab MQTT bridge. 1.6 is the floor that ships with most distro
+        # repos; 2.x is supported via the v1-callback shim in bambu.py.
+        "paho-mqtt>=1.6",
+    ],
     python_requires=">=3.9,<3.13",
     entry_points={
         "octoprint.plugin": [

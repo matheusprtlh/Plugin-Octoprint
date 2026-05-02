@@ -35,6 +35,9 @@
                 <option value="bambu">Bambu Lab</option>
                 <option value="other">{{ _('Outra') }}</option>
             </select>
+            <span class="help-block">
+                {{ _('Para Bambu Lab via MQTT direto, ative "Modo Bambu Lab" abaixo — a marca será forçada para "bambu" no payload.') }}
+            </span>
         </div>
     </div>
 
@@ -63,6 +66,97 @@
                 {{ _('Testar webhook') }}
             </button>
             <span data-bind="text: testResult"></span>
+        </div>
+    </div>
+
+    <hr>
+    <h4>{{ _('Bambu Lab (MQTT direto)') }}</h4>
+
+    <div class="control-group">
+        <div class="controls">
+            <label class="checkbox">
+                <input type="checkbox"
+                       data-bind="checked: settingsViewModel.settings.plugins.marketplace_link.bambu_enabled">
+                {{ _('Habilitar modo Bambu Lab') }}
+            </label>
+            <span class="help-block">
+                {{ _('Conecta direto no broker MQTT da impressora Bambu na rede local. Útil porque impressoras Bambu não aparecem para o OctoPrint via porta serial. Use apenas se a marca selecionada acima for Bambu Lab.') }}
+            </span>
+        </div>
+    </div>
+
+    <div data-bind="visible: settingsViewModel.settings.plugins.marketplace_link.bambu_enabled">
+        <div class="alert alert-warning" style="margin-left: 180px; margin-right: 20px;">
+            <strong>{{ _('Atenção:') }}</strong>
+            {{ _('o acesso MQTT local da Bambu depende do firmware. Versões muito recentes podem exigir Developer Mode habilitado na impressora. Veja o README para detalhes.') }}
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">{{ _('Host (IP local)') }}</label>
+            <div class="controls">
+                <input type="text" placeholder="192.168.0.123"
+                       data-bind="value: settingsViewModel.settings.plugins.marketplace_link.bambu_host">
+                <span class="help-block">
+                    {{ _('IP da impressora na rede. Recomenda-se reservar IP fixo no roteador (DHCP reservation).') }}
+                </span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">{{ _('Serial Number') }}</label>
+            <div class="controls">
+                <input type="text" placeholder="01PS00A0B0000001"
+                       data-bind="value: settingsViewModel.settings.plugins.marketplace_link.bambu_serial">
+                <span class="help-block">
+                    {{ _('Serial da impressora. Pegar em Settings → Device Info na tela da Bambu.') }}
+                </span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">{{ _('Access Code') }}</label>
+            <div class="controls">
+                <input type="password" placeholder="8 dígitos"
+                       data-bind="value: settingsViewModel.settings.plugins.marketplace_link.bambu_access_code">
+                <span class="help-block">
+                    {{ _('Código de 8 dígitos exibido em Settings → WLAN → "Access Code" na tela da Bambu. É a senha do MQTT local.') }}
+                </span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">{{ _('Modelo Bambu') }}</label>
+            <div class="controls">
+                <select data-bind="value: settingsViewModel.settings.plugins.marketplace_link.bambu_model">
+                    <option value="">({{ _('usa o campo "Modelo" acima') }})</option>
+                    <option value="A1">A1</option>
+                    <option value="A1 Mini">A1 Mini</option>
+                    <option value="P1S">P1S</option>
+                    <option value="P1P">P1P</option>
+                    <option value="X1C">X1 Carbon</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="controls">
+                <button type="button" class="btn" data-bind="click: testBambu">
+                    {{ _('Testar conexão Bambu') }}
+                </button>
+                <span data-bind="text: bambuTestResult"></span>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label class="control-label">{{ _('Status atual') }}</label>
+            <div class="controls">
+                <span data-bind="text: bambuStatusLabel"></span>
+                <div class="muted" data-bind="visible: bambuFirmware, text: 'Firmware: ' + bambuFirmware()"></div>
+                <div class="muted" data-bind="visible: bambuLastError">
+                    <strong>{{ _('Último erro:') }}</strong>
+                    <code data-bind="text: bambuLastError"></code>
+                </div>
+            </div>
         </div>
     </div>
 
